@@ -1,80 +1,49 @@
 import os
-from hindsight_client import Hindsight
 from dotenv import load_dotenv
+from hindsight_client import Hindsight
 
 load_dotenv()
 
-HINDSIGHT_URL = os.getenv(
-    "HINDSIGHT_API_URL",
-    "https://api.hindsight.vectorize.io"
+client = Hindsight(
+    base_url=os.getenv("HINDSIGHT_API_URL"),
+    api_key=os.getenv("HINDSIGHT_API_KEY")
 )
 
-HINDSIGHT_KEY = os.getenv("HINDSIGHT_API_KEY")
 BANK_ID = os.getenv("HINDSIGHT_BANK_ID", "memoryops-ai")
 
-client = Hindsight(
-    base_url=HINDSIGHT_URL,
-    api_key=HINDSIGHT_KEY
-)
 
-
-def setup_bank():
-    try:
-        client.create_bank(
-            bank_id=BANK_ID,
-            name="MemoryOps AI Incident Memory"
-        )
-        return True
-    except Exception:
-        return True
-
-
-def store_incident(incident, diagnosis):
-    content = f"""
-Production Incident Record
-
-Service: {incident.service}
-Error: {incident.error}
-Logs: {incident.logs}
-Description: {incident.description}
-
-AI Diagnosis:
-Root Cause: {diagnosis.get("root_cause", "")}
-Recommended Fix: {diagnosis.get("recommended_fix", "")}
-Severity: {diagnosis.get("severity", "")}
-Confidence: {diagnosis.get("confidence", "")}
-
-Resolution Outcome:
-This incident was analyzed by MemoryOps AI and should be used as historical operational knowledge for future incidents.
-"""
-
-    return client.retain(
+async def setup_bank():
+    return await client.acreate_bank(
         bank_id=BANK_ID,
-        content=content,
-        context="production incident response"
+        name="MemoryOps AI",
+        reflect_mission="You are an expert production incident response memory system. Prioritize previous incidents, root causes, successful fixes, and operational outcomes.",
+        background="Memory bank for production incidents, service failures, debugging patterns, root causes and resolutions."
     )
 
 
-def recall_incidents(incident):
+async def recall_incidents(incident):
     query = f"""
-Find previous production incidents similar to this incident.
+Production incident requiring diagnosis.
 
 Service: {incident.service}
 Error: {incident.error}
 Logs: {incident.logs}
 Description: {incident.description}
 
-Focus on:
-- similar services
-- similar errors
-- similar log patterns
-- previous root causes
-- successful fixes
+Find previous incidents with similar:
+- service failures
+- errors
+- log patterns
+- root causes
+- successful resolutions
+- operational outcomes
 """
 
-    result = client.recall(
+    result = await client.arecall(
         bank_id=BANK_ID,
-        query=query
+        query=query,
+        max_tokens=3000,
+        budget="mid"
     )
 
     memories = []
@@ -87,3 +56,49 @@ Focus on:
         })
 
     return memories
+
+
+async def store_incident(incident, diagnosis):
+    content = f"""
+PRODUCTION INCIDENT
+
+Service:
+{incident.service}
+
+Error:
+{incident.error}
+
+Logs:
+{incident.logs}
+
+Description:
+{incident.description}
+
+AI ANALYSIS
+
+Summary:
+{diagnosis.get("summary", "")}
+
+Root Cause:
+{diagnosis.get("root_cause", "")}
+
+Recommended Fix:
+{diagnosis.get("recommended_fix", "")}
+
+Severity:
+{diagnosis.get("severity", "")}
+
+Confidence:
+{diagnosis.get("confidence", "")}%
+
+Learning:
+{diagnosis.get("learning", "")}
+
+This incident has been analyzed and should become operational knowledge for future incident response.
+"""
+
+    return await client.aretain(
+        bank_id=BANK_ID,
+        content=content,
+        context="MemoryOps AI production incident learning"
+    )
