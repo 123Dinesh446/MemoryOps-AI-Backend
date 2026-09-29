@@ -3,12 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 
-from app.memory import (
-    setup_bank,
-    recall_incidents,
-    store_incident
-)
-
+from app.memory import recall_incidents, store_incident
 from app.ai import analyze_incident
 
 
@@ -33,17 +28,6 @@ class Incident(BaseModel):
     error: str
     logs: str
     description: str
-
-
-@app.on_event("startup")
-async def startup():
-
-    try:
-        await setup_bank()
-        print("Hindsight memory bank ready")
-
-    except Exception as e:
-        print("Hindsight setup:", e)
 
 
 @app.get("/")
